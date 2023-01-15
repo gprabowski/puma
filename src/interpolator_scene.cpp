@@ -112,7 +112,7 @@ void interpolator_scene::render(input_state &input, bool left) {
     // arm2
     mmat = math::get_model_matrix(
         {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f},
-        math::deg_to_rad(glm::vec3{0.f, 0.f, model.left_puma.alpha_2}));
+        math::deg_to_rad(glm::vec3{0.f, 0.f, -model.left_puma.alpha_2}));
     skinning_matrix = skinning_matrix * mmat;
     mmat = skinning_matrix *
            glm::scale(glm::mat4(1.f), {model.left_puma.q2 / 10.f, 1.f, 1.f});
@@ -129,7 +129,7 @@ void interpolator_scene::render(input_state &input, bool left) {
     // arm3
     mmat = math::get_model_matrix(
         {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f},
-        math::deg_to_rad(glm::vec3{0.f, 0.f, model.left_puma.alpha_3}));
+        math::deg_to_rad(glm::vec3{0.f, 0.f, -model.left_puma.alpha_3}));
     skinning_matrix = skinning_matrix * mmat;
     render_element(model.renderable.arm_3, model.geometry.arm_3,
                    skinning_matrix);

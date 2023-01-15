@@ -292,6 +292,98 @@ void render_simulation_gui(internal::model &model) {
 
   if (ImGui::Button("Run")) {
     // solve the inverse config
+
+    const static glm::vec3 def_x{1, 0, 0};
+    const static glm::vec3 def_y{0, 1, 0};
+    const static glm::vec3 def_z{0, 0, 1};
+    // 1. solve for start position
+    glm::vec3 start_x5 =
+        glm::normalize(model.next_settings.quat_rotation_start * def_x);
+    glm::vec3 start_y5 =
+        glm::normalize(model.next_settings.quat_rotation_start * def_y);
+    glm::vec3 start_z5 =
+        glm::normalize(model.next_settings.quat_rotation_start * def_z);
+
+    std::vector<internal::puma_state> solutions;
+    solutions.reserve(8);
+    solutions.push_back(model.left_puma);
+    solutions[0].alpha_1 = atan((model.next_settings.position_start.y -
+                                 model.left_puma.l4 * start_x5.y) /
+                                (model.next_settings.position_start.x -
+                                 model.left_puma.l4 * start_x5.x));
+    solutions.push_back(model.left_puma);
+    solutions[1].alpha_1 = solutions[0].alpha_1 + glm::pi<float>();
+    for (int i = 0; i < 2; ++i) {
+      auto &sol = solutions[i];
+      const auto c1 = std::cos(sol.alpha_1);
+      const auto s1 = std::sin(sol.alpha_1);
+
+      sol.alpha_4 = asin(c1 * start_x5.y - s1 * start_x5.x);
+      auto copied = sol;
+      copied.alpha_4 = sol.alpha_4 > 0 ? glm::pi<float>() - sol.alpha_4
+                                       : -glm::pi<float>() - sol.alpha_4;
+      solutions.push_back(copied);
+    }
+
+    for (int i = 0; i < 4; ++i) {
+      auto &sol = solutions[i];
+      auto &x5 = start_x5;
+      auto &p5 = model.next_settings.position_start;
+      const auto c1 = std::cos(sol.alpha_1);
+      const auto s1 = std::sin(sol.alpha_1);
+      const auto c4 = std::cos(sol.alpha_4);
+      const auto s4 = std::sin(sol.alpha_4);
+
+      const auto c5 = (c1 * start_y5.y - s1 * start_y5.x) / c4;
+      const auto s5 = (s1 * start_z5.x - c1 * start_z5.y) / c4;
+
+      sol.alpha_5 = atan2(c5, s5);
+
+      const auto nom = -(c1 * c4 * (p5.z - sol.l4 * x5.z - sol.l1) +
+                         sol.l3 * (x5.x + s1 * s4));
+      const auto den = c4 * (p5.x - sol.l4 * x5.x) - c1 * sol.l3 * x5.z;
+      sol.alpha_2 = atan(nom / den);
+      auto copied = sol;
+      copied.alpha_2 = sol.alpha_2 + glm::pi<float>();
+      solutions.push_back(copied);
+    }
+
+    for (int i = 0; i < 8; ++i) {
+      auto &sol = solutions[i];
+      auto &x5 = start_x5;
+      auto &p5 = model.next_settings.position_start;
+      const auto c1 = std::cos(sol.alpha_1);
+      const auto s1 = std::sin(sol.alpha_1);
+      const auto c2 = std::cos(sol.alpha_2);
+      const auto c4 = std::cos(sol.alpha_4);
+      const auto s4 = std::sin(sol.alpha_4);
+
+      sol.q2 =
+          (c4 * (p5.x - sol.l4 * x5.x) - c1 * sol.l3 * x5.z) / (c1 * c2 * c4);
+
+      const auto c23 = (x5.x + s1 * s4) / (c1 * c4);
+      const auto s23 = -x5.z / c4;
+
+      const auto a23 = atan2(c23, s23);
+      sol.alpha_3 = a23 - sol.alpha_2;
+    }
+
+    model.left_puma = solutions[1];
+    model.left_puma.alpha_1 = glm::degrees(model.left_puma.alpha_1);
+    model.left_puma.alpha_2 = glm::degrees(model.left_puma.alpha_2);
+    model.left_puma.alpha_3 = glm::degrees(model.left_puma.alpha_3);
+    model.left_puma.alpha_4 = glm::degrees(model.left_puma.alpha_4);
+    model.left_puma.alpha_5 = glm::degrees(model.left_puma.alpha_5);
+
+    model.right_puma = solutions[7];
+    model.right_puma.alpha_1 = glm::degrees(model.right_puma.alpha_1);
+    model.right_puma.alpha_2 = glm::degrees(model.right_puma.alpha_2);
+    model.right_puma.alpha_3 = glm::degrees(model.right_puma.alpha_3);
+    model.right_puma.alpha_4 = glm::degrees(model.right_puma.alpha_4);
+    model.right_puma.alpha_5 = glm::degrees(model.right_puma.alpha_5);
+
+    // 2. solve for end position
+
     // start simulation
   }
 
