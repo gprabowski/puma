@@ -42,6 +42,7 @@ glm::vec3 get_actuator_pos(const internal::puma_state &state) {
 
   auto pret = skinning_matrix * res;
   pret.z *= -1;
+  std::swap(pret.y, pret.z);
   return pret;
 }
 
@@ -147,8 +148,8 @@ std::vector<internal::puma_state> solve_task(internal::model &model,
   std::erase_if(solutions, [&](const auto &sol) {
     const auto lpos = get_actuator_pos(sol);
     const auto p5 = settings.pos;
-    LOGGER_INFO("Actuator: {0}, {1}, {2}", lpos.x, lpos.y, lpos.z);
-    LOGGER_INFO("Actuator: {0}, {1}, {2}", p5.x, p5.y, p5.z);
+    //LOGGER_INFO("Actuator: {0}, {1}, {2}", lpos.x, lpos.y, lpos.z);
+    //LOGGER_INFO("Actuator: {0}, {1}, {2}", p5.x, p5.y, p5.z);
 
     const auto dist = glm::length(settings.pos - lpos);
     return (sol.q2 < 0) || (dist > 0.5f);

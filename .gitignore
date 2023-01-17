@@ -1,5 +1,12 @@
 build/
 .cache/
 .idea/
+.vs/
+out/
 cmake-build-debug/
-thirdparty/
+thirdparty/file_dialog
+thirdparty/glfw
+thirdparty/glm
+thirdparty/imgui
+thirdparty/implot
+thirdparty/spdlog

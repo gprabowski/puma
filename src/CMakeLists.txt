@@ -28,7 +28,10 @@ if(CLANG_TIDY_EXE)
     set_target_properties(milling PROPERTIES CXX_CLANG_TIDY "${DO_CLANG_TIDY}" ) 
 endif()
 
+if (NOT MSVC)
 target_compile_options(milling PUBLIC -Werror -Wall)
+endif()
+
 target_compile_features(milling PUBLIC cxx_std_20)
 target_sources(milling PUBLIC ${MILLING_SIMULATOR_SOURCES})
 
