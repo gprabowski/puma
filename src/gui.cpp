@@ -268,6 +268,17 @@ void render_simulation_gui(internal::model &model) {
   ImGui::SliderFloat("Alpha5", &model.left_puma.alpha_5, 0.f, 360.f);
   ImGui::End();
 
+  ImGui::Begin("Right Puma Debug");
+  ImGui::DragFloat("Length", &model.next_settings.length, 1.f, 20.f);
+
+  ImGui::SliderFloat("Alpha1", &model.right_puma.alpha_1, 0.f, 360.f);
+  ImGui::SliderFloat("Q2", &model.right_puma.q2, 0.f, 360.f);
+  ImGui::SliderFloat("Alpha2", &model.right_puma.alpha_2, 0.f, 360.f);
+  ImGui::SliderFloat("Alpha3", &model.right_puma.alpha_3, 0.f, 360.f);
+  ImGui::SliderFloat("Alpha4", &model.right_puma.alpha_4, 0.f, 360.f);
+  ImGui::SliderFloat("Alpha5", &model.right_puma.alpha_5, 0.f, 360.f);
+  ImGui::End();
+
   ImGui::Begin("Simulation Settings");
   ImGui::DragFloat("Length", &model.next_settings.length, 1.f, 20.f);
 
@@ -318,6 +329,8 @@ void render_simulation_gui(internal::model &model) {
 
     model.current_settings.value().start_state = solutions_start[0];
     model.current_settings.value().end_state = solutions_end[0];
+
+    model.right_puma = solutions_start[0];
   }
 
   ImGui::End();

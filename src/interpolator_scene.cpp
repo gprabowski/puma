@@ -6,6 +6,8 @@
 
 #include <mock_data.hpp>
 
+#include <inverse_kinematics.hpp>
+
 namespace pusn {
 
 void generate_milling_tool(api_agnostic_geometry &out) {}
@@ -76,9 +78,33 @@ void interpolator_scene::render(input_state &input, bool left) {
     if (progress > 1.0) {
       model.current_settings.reset();
     } else {
+      // left puma - linear interpolation of start and end config
       auto &start = model.current_settings.value().start_state;
       auto &end = model.current_settings.value().end_state;
       model.left_puma = internal::lerp(start, end, progress);
+
+      // right puma - find inverse solution for each position
+      auto &pos_start = model.current_settings.value().position_start;
+      auto &rot_start = model.current_settings.value().quat_rotation_start;
+      auto &pos_end = model.current_settings.value().position_end;
+      auto &rot_end = model.current_settings.value().quat_rotation_end;
+
+      auto curr_pos = glm::mix(pos_start, pos_end, progress);
+      auto curr_rot = glm::slerp(rot_start, rot_end, progress);
+
+      auto solutions = solve_task(model, {curr_pos, curr_rot});
+      // find the closest to current right puma state
+      float closest_dist = internal::state_dist(model.right_puma, solutions[0]);
+      std::size_t closest_state = 0;
+      for (std::size_t i = 1; i < solutions.size(); ++i) {
+        if (internal::state_dist(model.right_puma, solutions[i]) <
+            closest_dist) {
+          closest_state = i;
+          closest_dist = internal::state_dist(model.right_puma, solutions[i]);
+        }
+      }
+
+      model.right_puma = solutions[closest_state];
     }
   }
 
@@ -92,7 +118,7 @@ void interpolator_scene::render(input_state &input, bool left) {
     glfw_impl::use_program(0);
   };
 
-  if (left) {
+  if (!left) {
     glm::mat4 skinning_matrix = glm::mat4(1.f);
     auto mmat =
         math::get_model_matrix({0.f, 0.f, 0.f}, {5.f, 1.f, 5.f},
@@ -160,8 +186,8 @@ void interpolator_scene::render(input_state &input, bool left) {
 
     // joint 12
     mmat = math::get_model_matrix(
-        {0.f, model.left_puma.l1, 0.f}, {1.f, 1.f, 1.f},
-        math::deg_to_rad(glm::vec3{0.f, model.left_puma.alpha_1, 0.f}));
+        {0.f, model.right_puma.l1, 0.f}, {1.f, 1.f, 1.f},
+        math::deg_to_rad(glm::vec3{0.f, model.right_puma.alpha_1, 0.f}));
     skinning_matrix = mmat * skinning_matrix;
     mmat = skinning_matrix * glm::translate(glm::mat4(1.f), {0.f, 0.f, 1.f});
     render_element(model.renderable.joint_12, model.geometry.joint_12, mmat);
@@ -169,15 +195,15 @@ void interpolator_scene::render(input_state &input, bool left) {
     // arm2
     mmat = math::get_model_matrix(
         {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f},
-        math::deg_to_rad(glm::vec3{0.f, 0.f, -model.left_puma.alpha_2}));
+        math::deg_to_rad(glm::vec3{0.f, 0.f, -model.right_puma.alpha_2}));
     skinning_matrix = skinning_matrix * mmat;
     mmat = skinning_matrix *
-           glm::scale(glm::mat4(1.f), {model.left_puma.q2 / 10.f, 1.f, 1.f});
+           glm::scale(glm::mat4(1.f), {model.right_puma.q2 / 10.f, 1.f, 1.f});
     render_element(model.renderable.arm_2, model.geometry.arm_2, mmat);
 
     // joint23
     mmat =
-        math::get_model_matrix({model.left_puma.q2, 0.f, 0.f}, {1.f, 1.f, 1.f},
+        math::get_model_matrix({model.right_puma.q2, 0.f, 0.f}, {1.f, 1.f, 1.f},
                                math::deg_to_rad(glm::vec3{0.f, 0.f, 0.f}));
     skinning_matrix = skinning_matrix * mmat;
     mmat = skinning_matrix * glm::translate(glm::mat4(1.f), {0.f, 0.f, 1.f});
@@ -186,15 +212,15 @@ void interpolator_scene::render(input_state &input, bool left) {
     // arm3
     mmat = math::get_model_matrix(
         {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f},
-        math::deg_to_rad(glm::vec3{0.f, 0.f, -model.left_puma.alpha_3}));
+        math::deg_to_rad(glm::vec3{0.f, 0.f, -model.right_puma.alpha_3}));
     skinning_matrix = skinning_matrix * mmat;
     render_element(model.renderable.arm_3, model.geometry.arm_3,
                    skinning_matrix);
 
     // arm4
     mmat = math::get_model_matrix(
-        {0.f, -model.left_puma.l3, 0.f}, {1.f, 1.f, 1.f},
-        math::deg_to_rad(glm::vec3{0.f, model.left_puma.alpha_4, 0.f}));
+        {0.f, -model.right_puma.l3, 0.f}, {1.f, 1.f, 1.f},
+        math::deg_to_rad(glm::vec3{0.f, model.right_puma.alpha_4, 0.f}));
     skinning_matrix = skinning_matrix * mmat;
     render_element(model.renderable.arm_4, model.geometry.arm_4,
                    skinning_matrix);

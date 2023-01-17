@@ -7,6 +7,7 @@
 
 #include <geometry.hpp>
 #include <glfw_impl.hpp>
+#include <math.hpp>
 #include <mock_data.hpp>
 
 #include <atomic>
@@ -26,11 +27,38 @@ struct puma_state {
   float l4{5.f};
 
   float alpha_1{0};
-  float alpha_2{glm::pi<float>() / 2.f};
-  float alpha_3{-glm::pi<float>() / 2.f};
+  float alpha_2{0};
+  float alpha_3{0};
   float alpha_4{0};
   float alpha_5{0};
 };
+
+inline float anorm(float a) { return std::fmod(a + 200 * 360, 360); }
+
+inline float amix(float a, float b, float t) {
+  if (std::abs(a - b) <= 180) {
+    return glm::mix(a, b, t);
+  } else {
+    return anorm((b >= a) ? glm::mix(a, b - 360, t) : glm::mix(a, b + 360, t));
+  }
+}
+
+inline float adist(float a, float b) {
+  if (std::abs(a - b) <= 180) {
+    return std::abs(a - b);
+  } else {
+    return (b >= a) ? std::abs(a - (b - 360)) : std::abs(a - (b + 360));
+  }
+}
+
+inline float sq(float a) { return a * a; }
+
+inline float state_dist(const puma_state &a, const puma_state &b) {
+  return std::sqrt(
+      sq(a.q2 - b.q2) + sq(adist(a.alpha_1, b.alpha_1)) +
+      sq(adist(a.alpha_2, b.alpha_2)) + sq(adist(a.alpha_3, b.alpha_3)) +
+      sq(adist(a.alpha_4, b.alpha_4)) + sq(adist(a.alpha_5, b.alpha_5)));
+}
 
 inline puma_state lerp(const puma_state &a, const puma_state &b, float t) {
   return puma_state{a.base_x,
@@ -39,11 +67,11 @@ inline puma_state lerp(const puma_state &a, const puma_state &b, float t) {
                     glm::mix(a.q2, b.q2, t),
                     a.l3,
                     a.l4,
-                    glm::mix(a.alpha_1, b.alpha_1, t),
-                    glm::mix(a.alpha_2, b.alpha_2, t),
-                    glm::mix(a.alpha_3, b.alpha_3, t),
-                    glm::mix(a.alpha_4, b.alpha_4, t),
-                    glm::mix(a.alpha_5, b.alpha_5, t)};
+                    amix(a.alpha_1, b.alpha_1, t),
+                    amix(a.alpha_2, b.alpha_2, t),
+                    amix(a.alpha_3, b.alpha_3, t),
+                    amix(a.alpha_4, b.alpha_4, t),
+                    amix(a.alpha_5, b.alpha_5, t)};
 }
 
 struct simulation_settings {
