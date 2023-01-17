@@ -7,6 +7,7 @@ set(MILLING_SIMULATOR_SOURCES
   inputs.cpp
   gui.cpp
   utils.cpp
+  inverse_kinematics.cpp
 )
 
 add_executable(milling)

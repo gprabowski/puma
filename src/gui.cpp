@@ -1,5 +1,7 @@
 #include <gui.hpp>
 
+#include <chrono>
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
@@ -11,7 +13,7 @@
 
 #include <ImGuiFileDialog.h>
 
-#include <chrono>
+#include <inverse_kinematics.hpp>
 
 namespace pusn {
 namespace gui {
@@ -185,7 +187,7 @@ void start_frame() {
 
 void update_viewport_info(std::function<void(void)> process_input) {
   // update viewport static info
-  ImGui::Begin("Euler Angles Interpolation");
+  ImGui::Begin("Position Interpolation");
 
   auto min = ImGui::GetWindowContentRegionMin();
   auto max = ImGui::GetWindowContentRegionMax();
@@ -210,7 +212,7 @@ void update_viewport_info(std::function<void(void)> process_input) {
 
   ImGui::End();
 
-  ImGui::Begin("Quaternion Interpolation");
+  ImGui::Begin("Solution Interpolation");
 
   min = ImGui::GetWindowContentRegionMin();
   max = ImGui::GetWindowContentRegionMax();
@@ -272,119 +274,50 @@ void render_simulation_gui(internal::model &model) {
   static glm::vec3 start_angle{};
   static glm::vec3 end_angle{};
 
-  ImGui::SliderFloat3("Start Position",
-                      glm::value_ptr(model.next_settings.position_start), -30.f,
-                      30.f);
+  bool changed = false;
+  changed = changed || ImGui::SliderFloat3(
+                           "Start Position",
+                           glm::value_ptr(model.next_settings.position_start),
+                           -30.f, 30.f);
   if (ImGui::SliderFloat3("Start Orientation", glm::value_ptr(start_angle), 0.f,
                           360.f)) {
+    changed = true;
     model.next_settings.quat_rotation_start =
         glm::quat(glm::radians(start_angle));
   }
 
-  ImGui::SliderFloat3("End Position",
-                      glm::value_ptr(model.next_settings.position_end), -30.f,
-                      30.f);
+  changed = changed ||
+            ImGui::SliderFloat3(
+                "End Position",
+                glm::value_ptr(model.next_settings.position_end), -30.f, 30.f);
 
   if (ImGui::SliderFloat3("End Orientation", glm::value_ptr(end_angle), 0.f,
                           360.f)) {
+    changed = true;
     model.next_settings.quat_rotation_end = glm::quat(glm::radians(end_angle));
   }
 
+  auto cpos = get_actuator_pos(model.left_puma);
+  ImGui::Text("Left actuator: %f, %f, %f", cpos.x, cpos.y, cpos.z);
+
+  auto rcpos = get_actuator_pos(model.right_puma);
+  ImGui::Text("Right actuator: %f, %f, %f", rcpos.x, rcpos.y, rcpos.z);
+
   if (ImGui::Button("Run")) {
-    // solve the inverse config
 
-    const static glm::vec3 def_x{1, 0, 0};
-    const static glm::vec3 def_y{0, 1, 0};
-    const static glm::vec3 def_z{0, 0, 1};
-    // 1. solve for start position
-    glm::vec3 start_x5 =
-        glm::normalize(model.next_settings.quat_rotation_start * def_x);
-    glm::vec3 start_y5 =
-        glm::normalize(model.next_settings.quat_rotation_start * def_y);
-    glm::vec3 start_z5 =
-        glm::normalize(model.next_settings.quat_rotation_start * def_z);
+    model.current_settings = model.next_settings;
+    model.current_settings.value().start_time =
+        std::chrono::system_clock::now();
 
-    std::vector<internal::puma_state> solutions;
-    solutions.reserve(8);
-    solutions.push_back(model.left_puma);
-    solutions[0].alpha_1 = atan((model.next_settings.position_start.y -
-                                 model.left_puma.l4 * start_x5.y) /
-                                (model.next_settings.position_start.x -
-                                 model.left_puma.l4 * start_x5.x));
-    solutions.push_back(model.left_puma);
-    solutions[1].alpha_1 = solutions[0].alpha_1 + glm::pi<float>();
-    for (int i = 0; i < 2; ++i) {
-      auto &sol = solutions[i];
-      const auto c1 = std::cos(sol.alpha_1);
-      const auto s1 = std::sin(sol.alpha_1);
+    auto solutions_start =
+        solve_task(model, {model.next_settings.position_start,
+                           model.next_settings.quat_rotation_start});
+    auto solutions_end =
+        solve_task(model, {model.next_settings.position_end,
+                           model.next_settings.quat_rotation_end});
 
-      sol.alpha_4 = asin(c1 * start_x5.y - s1 * start_x5.x);
-      auto copied = sol;
-      copied.alpha_4 = sol.alpha_4 > 0 ? glm::pi<float>() - sol.alpha_4
-                                       : -glm::pi<float>() - sol.alpha_4;
-      solutions.push_back(copied);
-    }
-
-    for (int i = 0; i < 4; ++i) {
-      auto &sol = solutions[i];
-      auto &x5 = start_x5;
-      auto &p5 = model.next_settings.position_start;
-      const auto c1 = std::cos(sol.alpha_1);
-      const auto s1 = std::sin(sol.alpha_1);
-      const auto c4 = std::cos(sol.alpha_4);
-      const auto s4 = std::sin(sol.alpha_4);
-
-      const auto c5 = (c1 * start_y5.y - s1 * start_y5.x) / c4;
-      const auto s5 = (s1 * start_z5.x - c1 * start_z5.y) / c4;
-
-      sol.alpha_5 = atan2(c5, s5);
-
-      const auto nom = -(c1 * c4 * (p5.z - sol.l4 * x5.z - sol.l1) +
-                         sol.l3 * (x5.x + s1 * s4));
-      const auto den = c4 * (p5.x - sol.l4 * x5.x) - c1 * sol.l3 * x5.z;
-      sol.alpha_2 = atan(nom / den);
-      auto copied = sol;
-      copied.alpha_2 = sol.alpha_2 + glm::pi<float>();
-      solutions.push_back(copied);
-    }
-
-    for (int i = 0; i < 8; ++i) {
-      auto &sol = solutions[i];
-      auto &x5 = start_x5;
-      auto &p5 = model.next_settings.position_start;
-      const auto c1 = std::cos(sol.alpha_1);
-      const auto s1 = std::sin(sol.alpha_1);
-      const auto c2 = std::cos(sol.alpha_2);
-      const auto c4 = std::cos(sol.alpha_4);
-      const auto s4 = std::sin(sol.alpha_4);
-
-      sol.q2 =
-          (c4 * (p5.x - sol.l4 * x5.x) - c1 * sol.l3 * x5.z) / (c1 * c2 * c4);
-
-      const auto c23 = (x5.x + s1 * s4) / (c1 * c4);
-      const auto s23 = -x5.z / c4;
-
-      const auto a23 = atan2(c23, s23);
-      sol.alpha_3 = a23 - sol.alpha_2;
-    }
-
-    model.left_puma = solutions[1];
-    model.left_puma.alpha_1 = glm::degrees(model.left_puma.alpha_1);
-    model.left_puma.alpha_2 = glm::degrees(model.left_puma.alpha_2);
-    model.left_puma.alpha_3 = glm::degrees(model.left_puma.alpha_3);
-    model.left_puma.alpha_4 = glm::degrees(model.left_puma.alpha_4);
-    model.left_puma.alpha_5 = glm::degrees(model.left_puma.alpha_5);
-
-    model.right_puma = solutions[7];
-    model.right_puma.alpha_1 = glm::degrees(model.right_puma.alpha_1);
-    model.right_puma.alpha_2 = glm::degrees(model.right_puma.alpha_2);
-    model.right_puma.alpha_3 = glm::degrees(model.right_puma.alpha_3);
-    model.right_puma.alpha_4 = glm::degrees(model.right_puma.alpha_4);
-    model.right_puma.alpha_5 = glm::degrees(model.right_puma.alpha_5);
-
-    // 2. solve for end position
-
-    // start simulation
+    model.current_settings.value().start_state = solutions_start[0];
+    model.current_settings.value().end_state = solutions_end[0];
   }
 
   ImGui::End();

@@ -23,7 +23,7 @@ void interpolator::render_viewport() {
   static const glm::vec4 clear_color = {38.f / 255.f, 38.f / 255.f,
                                         38.f / 255.f, 1.00f};
 
-  ImGui::Begin("Euler Angles Interpolation");
+  ImGui::Begin("Position Interpolation");
   viewport.bind();
   viewport.left = true;
   auto s = ImGui::GetContentRegionAvail();
@@ -42,7 +42,7 @@ void interpolator::render_viewport() {
   viewport.unbind();
   ImGui::End();
 
-  ImGui::Begin("Quaternion Interpolation");
+  ImGui::Begin("Solution Interpolation");
   viewport.bind();
   viewport.left = false;
   s = ImGui::GetContentRegionAvail();
