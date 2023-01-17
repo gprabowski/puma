@@ -115,6 +115,9 @@ struct puma_geometry {
   api_agnostic_geometry joint_23;
   api_agnostic_geometry arm_3;
   api_agnostic_geometry arm_4;
+  api_agnostic_geometry spike_x;
+  api_agnostic_geometry spike_y;
+  api_agnostic_geometry spike_z;
 
   void clear() {
     base.vertices.clear();
@@ -137,6 +140,15 @@ struct puma_geometry {
 
     arm_4.vertices.clear();
     arm_4.indices.clear();
+
+    spike_x.vertices.clear();
+    spike_x.indices.clear();
+
+    spike_y.vertices.clear();
+    spike_y.indices.clear();
+
+    spike_z.vertices.clear();
+    spike_z.indices.clear();
   }
 };
 
@@ -148,6 +160,9 @@ struct puma_renderable {
   glfw_impl::renderable joint_23;
   glfw_impl::renderable arm_3;
   glfw_impl::renderable arm_4;
+  glfw_impl::renderable spike_x;
+  glfw_impl::renderable spike_y;
+  glfw_impl::renderable spike_z;
 };
 
 struct model {
@@ -203,6 +218,24 @@ struct model {
         50, left_puma.l4, 1.f, geometry.arm_4.vertices, geometry.arm_4.indices,
         rot_m, {0.8f, 0.8f, 0.8f});
 
+    // spike x
+    rot_m = glm::toMat4(glm::quat({0.f, -glm::pi<float>() / 2.f, 0.f}));
+    mock_data::build_vertices_helper(50, 2.f, 0.2f, geometry.spike_x.vertices,
+                                     geometry.spike_x.indices, rot_m,
+                                     {1.0f, 0.0f, 0.0f});
+
+    // spike y
+    rot_m = glm::toMat4(glm::quat({0.f, 0.f, 0.f}));
+    mock_data::build_vertices_helper(50, 2.f, 0.2f, geometry.spike_y.vertices,
+                                     geometry.spike_y.indices, rot_m,
+                                     {0.0f, 1.0f, 0.0f});
+
+    // spike z
+    rot_m = glm::toMat4(glm::quat({glm::pi<float>() / 2.f, 0.f, 0.f}));
+    mock_data::build_vertices_helper(50, 2.f, 0.2f, geometry.spike_z.vertices,
+                                     geometry.spike_z.indices, rot_m,
+                                     {0.0f, 0.0f, 1.0f});
+
     glfw_impl::fill_renderable(geometry.base.vertices, geometry.base.indices,
                                renderable.base);
     glfw_impl::add_program_to_renderable("resources/model", renderable.base);
@@ -232,6 +265,21 @@ struct model {
     glfw_impl::fill_renderable(geometry.arm_4.vertices, geometry.arm_4.indices,
                                renderable.arm_4);
     glfw_impl::add_program_to_renderable("resources/model", renderable.arm_4);
+
+    // spike x
+    glfw_impl::fill_renderable(geometry.spike_x.vertices,
+                               geometry.spike_x.indices, renderable.spike_x);
+    glfw_impl::add_program_to_renderable("resources/model", renderable.spike_x);
+
+    // spike x
+    glfw_impl::fill_renderable(geometry.spike_y.vertices,
+                               geometry.spike_y.indices, renderable.spike_y);
+    glfw_impl::add_program_to_renderable("resources/model", renderable.spike_y);
+
+    // spike x
+    glfw_impl::fill_renderable(geometry.spike_z.vertices,
+                               geometry.spike_z.indices, renderable.spike_z);
+    glfw_impl::add_program_to_renderable("resources/model", renderable.spike_z);
   }
 };
 

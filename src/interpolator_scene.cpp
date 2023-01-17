@@ -171,6 +171,18 @@ void interpolator_scene::render(input_state &input, bool left) {
     skinning_matrix = skinning_matrix * mmat;
     render_element(model.renderable.arm_4, model.geometry.arm_4,
                    skinning_matrix);
+
+    // spikes
+    mmat = math::get_model_matrix(
+        {model.left_puma.l4, 0.f, 0.f}, {1.f, 1.f, 1.f},
+        math::deg_to_rad(glm::vec3{model.left_puma.alpha_5, 0.f, 0.f}));
+    skinning_matrix = skinning_matrix * mmat;
+    render_element(model.renderable.spike_x, model.geometry.spike_x,
+                   skinning_matrix);
+    render_element(model.renderable.spike_y, model.geometry.spike_y,
+                   skinning_matrix);
+    render_element(model.renderable.spike_z, model.geometry.spike_z,
+                   skinning_matrix);
   } else {
     glm::mat4 skinning_matrix = glm::mat4(1.f);
     auto mmat =
@@ -223,6 +235,18 @@ void interpolator_scene::render(input_state &input, bool left) {
         math::deg_to_rad(glm::vec3{0.f, model.right_puma.alpha_4, 0.f}));
     skinning_matrix = skinning_matrix * mmat;
     render_element(model.renderable.arm_4, model.geometry.arm_4,
+                   skinning_matrix);
+
+    // spikes
+    mmat = math::get_model_matrix(
+        {model.right_puma.l4, 0.f, 0.f}, {1.f, 1.f, 1.f},
+        math::deg_to_rad(glm::vec3{model.right_puma.alpha_5, 0.f, 0.f}));
+    skinning_matrix = skinning_matrix * mmat;
+    render_element(model.renderable.spike_x, model.geometry.spike_x,
+                   skinning_matrix);
+    render_element(model.renderable.spike_y, model.geometry.spike_y,
+                   skinning_matrix);
+    render_element(model.renderable.spike_z, model.geometry.spike_z,
                    skinning_matrix);
   }
 }
