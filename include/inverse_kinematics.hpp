@@ -16,6 +16,6 @@ struct puma_pos {
 };
 
 std::vector<internal::puma_state> solve_task(internal::model &model,
-                                             const puma_pos &settings);
+                                             puma_pos settings);
 
 } // namespace pusn

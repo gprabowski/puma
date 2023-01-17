@@ -47,9 +47,9 @@ glm::vec3 get_actuator_pos(const internal::puma_state &state) {
 }
 
 std::vector<internal::puma_state> solve_task(internal::model &model,
-                                             const puma_pos &settings) {
-  // solve the inverse config
+                                             puma_pos settings) {
 
+  // solve the inverse config
   const static glm::vec3 def_x{1, 0, 0};
   const static glm::vec3 def_y{0, 1, 0};
   const static glm::vec3 def_z{0, 0, 1};
@@ -57,6 +57,13 @@ std::vector<internal::puma_state> solve_task(internal::model &model,
   glm::vec3 start_x5 = glm::normalize(settings.rot * def_x);
   glm::vec3 start_y5 = glm::normalize(settings.rot * def_y);
   glm::vec3 start_z5 = glm::normalize(settings.rot * def_z);
+
+  auto tmp_p = settings.pos - model.left_puma.l4 * start_x5;
+  tmp_p.z = 0;
+  if (glm::length(tmp_p) < 0.1) {
+      settings.pos.x += 1e-3f;
+      settings.pos.y -= 1e-3f;
+  }
 
   std::vector<internal::puma_state> solutions;
   solutions.reserve(8);
@@ -72,6 +79,10 @@ std::vector<internal::puma_state> solve_task(internal::model &model,
     const auto s1 = std::sin(sol.alpha_1);
 
     sol.alpha_4 = asin(c1 * start_x5.y - s1 * start_x5.x);
+    if (std::abs(sol.alpha_4) < 1e-3) {
+        sol.alpha_4 += 1e-3f;
+    }
+
     auto copied = sol;
     copied.alpha_4 = sol.alpha_4 > 0 ? glm::pi<float>() - sol.alpha_4
                                      : -glm::pi<float>() - sol.alpha_4;
